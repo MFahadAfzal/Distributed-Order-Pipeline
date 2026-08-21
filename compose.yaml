@@ -1,22 +1,60 @@
 services:
   gateway:
     build: gateway
-    ports: 
+    ports:
       - "${GATEWAY_PORT}:8000"
+    develop:
+      watch:
+        - action: sync
+          path: ./gateway
+          target: /code
+        - action: rebuild
+          path: ./gateway/requirements.txt
+
   inventory:
     build: inventory
-    ports: 
+    ports:
       - "${INVENTORY_PORT}:8000"
+    develop:
+      watch:
+        - action: sync
+          path: ./inventory
+          target: /code
+        - action: rebuild
+          path: ./inventory/requirements.txt
+
   notification:
     build: notification
     ports:
       - "${NOTIFICATION_PORT}:8000"
+    develop:
+      watch:
+        - action: sync
+          path: ./notification
+          target: /code
+        - action: rebuild
+          path: ./notification/requirements.txt
+
   order:
     build: order
     ports:
       - "${ORDER_PORT}:8000"
+    develop:
+      watch:
+        - action: sync
+          path: ./order
+          target: /code
+        - action: rebuild
+          path: ./order/requirements.txt
+
   payment:
     build: payment
     ports:
       - "${PAYMENT_PORT}:8000"
-
+    develop:
+      watch:
+        - action: sync
+          path: ./payment
+          target: /code
+        - action: rebuild
+          path: ./payment/requirements.txt

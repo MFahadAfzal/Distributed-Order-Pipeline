@@ -1,0 +1,22 @@
+services:
+  gateway:
+    build: gateway
+    ports: 
+      - "${GATEWAY_PORT}:8000"
+  inventory:
+    build: inventory
+    ports: 
+      - "${INVENTORY_PORT}:8000"
+  notification:
+    build: notification
+    ports:
+      - "${NOTIFICATION_PORT}:8000"
+  order:
+    build: order
+    ports:
+      - "${ORDER_PORT}:8000"
+  payment:
+    build: payment
+    ports:
+      - "${PAYMENT_PORT}:8000"
+

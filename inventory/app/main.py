@@ -1,7 +1,6 @@
 from fastapi import FastAPI
-
-app = FastAPI()
-
+from database import lifespan
+app = FastAPI(lifespan=lifespan)
 
 @app.get("/health")
 async def health():

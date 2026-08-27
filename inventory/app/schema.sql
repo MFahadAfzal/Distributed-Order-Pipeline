@@ -10,5 +10,5 @@ CREATE TABLE IF NOT EXISTS reservation (
     order_id INT,
     product_id INT REFERENCES product(id),
     amount INT,
-    status VARCHAR(50)
+    status VARCHAR(50) DEFAULT 'pending'
 );

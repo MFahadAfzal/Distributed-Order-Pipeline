@@ -41,6 +41,9 @@ services:
     build: order
     ports:
       - "${ORDER_PORT}:8000"
+    environment:
+      - DBSTRING=${DBSTRING}
+      - INVURL=${INVENTORY_SERVICE_URL}
     develop:
       watch:
         - action: sync

@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import psycopg2
 import os
 import traceback
@@ -72,8 +72,11 @@ def reservation(id, orderId, amount):
                     return reservationId
                 
                 else:
-                    raise ValueError("Not enough product")
+                    raise HTTPException(status_code=400, detail="Not enough product")
                 
+    except HTTPException:
+        raise
+
     except Exception as error:
         # 'error' holds the exception object
         print(f"An error occurred: {error}", flush=True)

@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import psycopg2
+import httpx
 import os
 import traceback
 
@@ -36,27 +37,71 @@ async def lifespan(app: FastAPI):
     yield 
 
 
+async def reserve(data: OrderData):
+    '''
+    Purpose: To check if the required inventory exists and then to reserve the items
+    Parameters: OrderData class
+    Returns: On success will return orderId, on failure returns the specific error encountered
+    '''
+    async with httpx.AsyncClient() as client:
+        try:
+                with psycopg2.connect(connection_string) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("BEGIN;")
+                        cur.execute("""
+                                        INSERT INTO orders DEFAULT VALUES
+                                        RETURNING id;
+                                    """)
+                        orderId, = cur.fetchone()
 
-async def ordering(data: OrderData):
+                        for i in data.orders:
 
-    try:
-        with psycopg2.connect(connection_string) as conn:
-            with conn.cursor() as cur:
-                cur.execute("BEGIN;")
-                cur.execute("""
-                                INSERT INTO orders DEFAULT VALUES
-                                RETURNING id;
-                            """)
-                orderId, = cur.fetchone()
-                for i in data.orders:
-                    cur.execute("""
-                                    INSERT INTO items (order_id, product_id, amount)
-                                    VALUES (%s, %s, %s);
-                                """, (orderId, i.id, i.amount ))
-                cur.execute("COMMIT;")
-                return orderId
-    except Exception as error:
-            # 'error' holds the exception object
-            print(f"An error occurred: {error}", flush=True)
-            print(traceback.format_exc(), flush=True)
+                            # request to get the products information
+                            response = (await client.get(f"{os.environ['INVURL']}information?productId={i.id}"))
+
+                            # Raise an exception for 4xx or 5xx status codes    
+                            response.raise_for_status() 
+
+                            response = response.json()
+
+                            #will then reserve item if enough in stock, will raise valueError if not
+                            if response[2] >= i.amount:
+                                reserving = await client.post(f"{os.environ['INVURL']}reserve", params={"id":i.id, "orderId":orderId, "amount": i.amount})
+
+                                if (reserving.status_code == 400):
+                                    raise ValueError("Not enough stock for product")
+                                
+                                            
+
+                                cur.execute("""
+                                                INSERT INTO items (order_id, product_id, amount)
+                                                VALUES (%s, %s, %s);
+                                            """, (orderId, i.id, i.amount ))
+                                    
+                            else:
+                                raise ValueError("Not enough stock for product")
+
+                        cur.execute("COMMIT;")
+                        return orderId
+            
+        except httpx.HTTPStatusError as exc:
+            await client.post(f"{os.environ['INVURL']}release", params={"orderId": orderId})
+            raise HTTPException(
+                status_code=exc.response.status_code, 
+                detail=f"External API error: {exc}"
+            )
+        
+        except httpx.RequestError as exc:
+            raise HTTPException(
+                status_code=503, 
+                detail=f"Could not reach external server: {exc}"
+            )
+        
+        except ValueError as error:
+            await client.post(f"{os.environ['INVURL']}release", params={"orderId": orderId})
+            print(f"Insufficient stock: {error}", flush=True)
             return error
+
+
+
+

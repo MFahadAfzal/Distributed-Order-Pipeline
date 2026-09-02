@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from database import lifespan, ordering, OrderData
+from database import lifespan, reserve, OrderData
 
 app = FastAPI(lifespan=lifespan)
 
@@ -10,5 +10,5 @@ async def health():
 
 @app.post("/order")
 async def order(data: OrderData):
-    orderId = await ordering(data)
+    orderId = await reserve(data)
     return orderId

@@ -7,17 +7,17 @@ app = FastAPI(lifespan=lifespan)
 async def health():
     return {"status": "ok"}
 
-@app.get("/reserve")
+@app.post("/reserve")
 async def reserve(id: int, orderId: int, amount: int):
     reservation(id, orderId, amount)
     return
 
-@app.get("/confirm")
+@app.post("/confirm")
 async def confirm(orderId: int):
     confirmation(orderId)
     return
 
-@app.get("/release")
+@app.post("/release")
 async def release(orderId: int):
     releasing(orderId)
     return

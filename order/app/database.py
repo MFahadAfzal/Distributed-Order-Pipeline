@@ -43,6 +43,7 @@ async def reserve(data: OrderData):
     Parameters: OrderData class
     Returns: On success will return orderId, on failure returns the specific error encountered
     '''
+    conn = None
     async with httpx.AsyncClient() as client:
         try:
                 with psycopg2.connect(connection_string) as conn:
@@ -83,7 +84,8 @@ async def reserve(data: OrderData):
 
                         cur.execute("COMMIT;")
                         return orderId
-            
+
+        #release stored data in the case of database function failing or one of the products has insufficient stock
         except httpx.HTTPStatusError as exc:
             await client.post(f"{os.environ['INVURL']}release", params={"orderId": orderId})
             raise HTTPException(
@@ -102,6 +104,54 @@ async def reserve(data: OrderData):
             print(f"Insufficient stock: {error}", flush=True)
             return error
 
+        finally:
+            if conn:
+                conn.close()
+
+
+def getOrderData(orderId):
+    '''
+    Purpose: To get the order status and all product ids and amounts related to the order
+    Parameters: The order id
+    Returns: When successful tuple of status and products, when failure wil return error
+    '''
+    status = None
+    conn = None
+    cur = None
+    try:
+        with psycopg2.connect(connection_string) as conn:
+            with conn.cursor() as cur:
+
+                cur.execute("""
+                                SELECT status
+                                FROM orders
+                                WHERE id = %s;
+                            """, [orderId])
+
+                
+                result = cur.fetchone()
+                if result is not None:
+                    status = result[0]
+
+                cur.execute("""
+                                SELECT product_id, amount
+                                FROM items
+                                WHERE order_id = %s;
+                            """, [orderId])
+                products = cur.fetchall()
+
+
+            return (status, products)
+
+            
+    except Exception as error:
+            print(f"An error occurred: {error}", flush=True)
+            print(traceback.format_exc(), flush=True)
+            return error
+
+    finally:
+        if conn:
+            conn.close()
 
 
 

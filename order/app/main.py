@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from database import lifespan, reserve, OrderData
+from database import lifespan, reserve, OrderData, getOrderData
 
 app = FastAPI(lifespan=lifespan)
 
@@ -12,3 +12,8 @@ async def health():
 async def order(data: OrderData):
     orderId = await reserve(data)
     return orderId
+
+@app.get("/information")
+def information(orderId):
+    data = getOrderData(orderId)
+    return data

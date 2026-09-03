@@ -43,6 +43,7 @@ services:
       - "${ORDER_PORT}:8000"
     environment:
       - DBSTRING=${DBSTRING}
+      - RMQSTRING=${RABBITMQ}
       - INVURL=${INVENTORY_SERVICE_URL}
     develop:
       watch:

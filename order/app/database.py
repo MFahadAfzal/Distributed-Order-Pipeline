@@ -18,6 +18,12 @@ class OrderData(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    '''
+    Purpose: if first time running will create the proper schema in the database
+    Parameters: FastAPI instance
+    Returns: Nothing
+    '''
+    conn = None
     try:
         # The 'with' block ensures the connection is closed when finished
         with psycopg2.connect(connection_string) as conn:
@@ -34,6 +40,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Database error occurred: {e}")
 
+    finally:
+        if conn:
+            conn.close()
     yield 
 
 

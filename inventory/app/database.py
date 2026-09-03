@@ -33,6 +33,7 @@ def reservation(id, orderId, amount):
     Parameters: The product id, the order id, and the amount wanting to be reserved
     Returns: If successful returns reservation id, if failed then returns exception/error message
     '''
+    conn = None
     try:
         with psycopg2.connect(connection_string) as conn:
             with conn.cursor() as cur:
@@ -82,6 +83,10 @@ def reservation(id, orderId, amount):
         print(f"An error occurred: {error}", flush=True)
         print(traceback.format_exc(), flush=True)
         return error
+    
+    finally:
+         if conn:
+              conn.close()
 
 
 def confirmation(orderId):
@@ -90,6 +95,7 @@ def confirmation(orderId):
     Parameters: the order id
     Returns: If successful returns a dict containing the order id and updated status, if failed then returns exception/error message
     '''
+    conn = None
     try:
         with psycopg2.connect(connection_string) as conn:
             with conn.cursor() as cur:
@@ -106,6 +112,10 @@ def confirmation(orderId):
         print(traceback.format_exc(), flush=True)
         return error
 
+    finally:
+         if conn:
+              conn.close()
+
 
 
 
@@ -115,6 +125,7 @@ def releasing(orderId):
     Parameters: The order id
     Return: The order id on success, the error on failure
     """
+    conn = None
     try:
         with psycopg2.connect(connection_string) as conn:
                     with conn.cursor() as cur:
@@ -149,12 +160,17 @@ def releasing(orderId):
             print(traceback.format_exc(), flush=True)
             return error
 
+    finally:
+         if conn:
+              conn.close()
+
 def info(productId):
     """
     Purpose: getting info about product
     Parameters: the product id
     Returns: tuple of product info or error
     """
+    conn = None
     try:
         with psycopg2.connect(connection_string) as conn:
                 with conn.cursor() as cur:
@@ -170,3 +186,7 @@ def info(productId):
         print(f"An error occurred: {error}", flush=True)
         print(traceback.format_exc(), flush=True)
         return error
+    
+    finally:
+         if conn:
+              conn.close()

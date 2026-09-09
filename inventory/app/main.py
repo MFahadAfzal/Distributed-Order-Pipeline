@@ -8,8 +8,8 @@ async def health():
     return {"status": "ok"}
 
 @app.post("/reserve")
-async def reserve(id: int, orderId: int, amount: int):
-    reservation(id, orderId, amount)
+async def reserve(id: int, orderId: int, amount: int, price: int):
+    reservation(id, orderId, amount, price)
     return
 
 @app.post("/confirm")

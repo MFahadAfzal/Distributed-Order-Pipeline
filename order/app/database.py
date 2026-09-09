@@ -11,6 +11,7 @@ connection_string = f"{os.environ['DBSTRING']}order_db"
 class Item(BaseModel):
     id: int
     amount: int
+    priceCents: int
 
 class OrderData(BaseModel):
     orders: list[Item]
@@ -37,6 +38,7 @@ async def lifespan(app: FastAPI):
                 # Execute the SQL commands
                 cur.execute(schema_sql)
 
+
     except Exception as e:
         print(f"Database error occurred: {e}")
 
@@ -55,6 +57,7 @@ async def reserve(data: OrderData):
     conn = None
     async with httpx.AsyncClient() as client:
         try:
+                totalCost = 0
                 with psycopg2.connect(connection_string) as conn:
                     with conn.cursor() as cur:
                         cur.execute("BEGIN;")
@@ -65,7 +68,7 @@ async def reserve(data: OrderData):
                         orderId, = cur.fetchone()
 
                         for i in data.orders:
-
+                            totalCost += i.priceCents
                             # request to get the products information
                             response = (await client.get(f"{os.environ['INVURL']}information?productId={i.id}"))
 
@@ -73,10 +76,10 @@ async def reserve(data: OrderData):
                             response.raise_for_status() 
 
                             response = response.json()
-
+                            print(f'{response}', flush=True)
                             #will then reserve item if enough in stock, will raise valueError if not
                             if response[2] >= i.amount:
-                                reserving = await client.post(f"{os.environ['INVURL']}reserve", params={"id":i.id, "orderId":orderId, "amount": i.amount})
+                                reserving = await client.post(f"{os.environ['INVURL']}reserve", params={"id":i.id, "orderId":orderId, "amount": i.amount, "price":i.priceCents})
 
                                 if (reserving.status_code == 400):
                                     raise ValueError("Not enough stock for product")
@@ -84,15 +87,16 @@ async def reserve(data: OrderData):
                                             
 
                                 cur.execute("""
-                                                INSERT INTO items (order_id, product_id, amount)
-                                                VALUES (%s, %s, %s);
-                                            """, (orderId, i.id, i.amount ))
+                                                INSERT INTO items (order_id, product_id, amount, price)
+                                                VALUES (%s, %s, %s, %s);
+                                            """, (orderId, i.id, i.amount, i.priceCents ))
+                            
                                     
                             else:
                                 raise ValueError("Not enough stock for product")
 
                         cur.execute("COMMIT;")
-                        return orderId
+                        return (orderId, totalCost)
 
         #release stored data in the case of database function failing or one of the products has insufficient stock
         except httpx.HTTPStatusError as exc:
@@ -120,7 +124,7 @@ async def reserve(data: OrderData):
 
 def getOrderData(orderId):
     '''
-    Purpose: To get the order status and all product ids and amounts related to the order
+    Purpose: To get the order status and all product ids, amounts, and prices related to the order
     Parameters: The order id
     Returns: When successful tuple of status and products, when failure wil return error
     '''
@@ -139,17 +143,25 @@ def getOrderData(orderId):
 
                 
                 result = cur.fetchone()
-                if result is not None:
-                    status = result[0]
+                if result is None:
+                    raise ValueError(f"Order {orderId} not found")
+                
+                status = result[0]
 
                 cur.execute("""
-                                SELECT product_id, amount
+                                SELECT product_id, amount, price
                                 FROM items
                                 WHERE order_id = %s;
                             """, [orderId])
                 products = cur.fetchall()
 
+                if not products:
+                    raise ValueError(f"Order {orderId} not found")
 
+                products = [
+                    {"product_id": p[0], "amount": p[1], "price": p[2]}
+                    for p in products
+                ]
             return (status, products)
 
             

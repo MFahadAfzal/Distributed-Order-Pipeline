@@ -15,6 +15,7 @@ async def lifespan(app: FastAPI):
     '''
     conn = None
     try:
+
         # The 'with' block ensures the connection is closed when finished
         with psycopg2.connect(connection_string) as conn:
             
@@ -37,7 +38,7 @@ async def lifespan(app: FastAPI):
     yield 
 
 
-def reservation(id, orderId, amount):
+def reservation(id, orderId, amount, price):
     '''
     Purpose: to reserve ordered product
     Parameters: The product id, the order id, and the amount wanting to be reserved
@@ -70,10 +71,10 @@ def reservation(id, orderId, amount):
 
                     #creating new row in reservations table
                     cur.execute("""
-                                    INSERT INTO reservation (order_id, product_id, amount)
-                                    VALUES (%s, %s, %s)
+                                    INSERT INTO reservation (order_id, product_id, amount, price)
+                                    VALUES (%s, %s, %s, %s)
                                     RETURNING id;
-                                """, [orderId, id, amount])
+                                """, [orderId, id, amount, price])
 
                     reservationId, = cur.fetchone()
 

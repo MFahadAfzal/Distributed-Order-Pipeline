@@ -7,5 +7,7 @@ CREATE TABLE IF NOT EXISTS items (
     id SERIAL PRIMARY KEY,
     order_id INT REFERENCES orders(id),
     product_id INT,
-    amount INT
+    amount INT,
+    price INT NOT NULL
 );
+

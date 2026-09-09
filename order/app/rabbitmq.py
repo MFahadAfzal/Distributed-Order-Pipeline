@@ -1,9 +1,10 @@
 import pika
+import json
 import os
 import traceback
 RMQSTRING = os.environ['RMQSTRING']
 
-def publishOrderCreated(orderId):
+def publishOrderCreated(data):
     '''
     Purpose: To send message to payment that an order has been created
     Parameters: the order Id
@@ -22,9 +23,9 @@ def publishOrderCreated(orderId):
         channel.basic_publish(
             exchange='',
             routing_key='payment',
-            body=str(orderId)
+            body=json.dumps(data)
         )
-        print(f" [x] Sent '{orderId}'")
+        print(f" [x] Sent '{data}'")
 
 
     except Exception as error:

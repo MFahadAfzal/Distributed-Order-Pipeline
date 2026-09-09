@@ -10,9 +10,29 @@ async def health():
 
 @app.post("/order")
 async def order(data: OrderData):
-    orderId = await reserve(data)
-    if isinstance(orderId, int):
-        publishOrderCreated(orderId)
+    orderId = None
+    reservedData = await reserve(data)
+
+    if not isinstance(reservedData, Exception):
+        orderId, totalCost = reservedData
+
+        result = getOrderData(orderId)
+        if isinstance(result, Exception):
+            return {"error": str(result)}
+
+        status, products = result
+
+        orderData = {
+            "orderId": orderId,
+            "status": status,
+            "products": products,
+            "cost": totalCost
+        }
+
+        publishOrderCreated(orderData)
+    else:
+        return {"error": str(reservedData)}
+    
     return orderId
 
 @app.get("/information")
@@ -20,7 +40,3 @@ def information(orderId):
     data = getOrderData(orderId)
     return data
 
-@app.get("/test")
-def test(orderId):
-    name = publishOrderCreated(orderId)
-    return

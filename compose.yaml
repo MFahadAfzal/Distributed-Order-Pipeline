@@ -63,6 +63,8 @@ services:
     build: payment
     ports:
       - "${PAYMENT_PORT}:8000"
+    environment:
+      - RMQSTRING=${RABBITMQ}
     depends_on:
       postgres:
         condition: service_healthy

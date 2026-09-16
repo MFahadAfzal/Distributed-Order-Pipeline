@@ -1,6 +1,16 @@
+import threading
 from fastapi import FastAPI
-from database import lifespan, reserve, OrderData, getOrderData
-from rabbitmq import publishOrderCreated
+from contextlib import asynccontextmanager
+from database import reserve, OrderData, getOrderData, setupSchema
+from rabbitmq import publishOrderCreated, listener
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    t = threading.Thread(target=listener, daemon=True)
+    t.start()
+    setupSchema()
+    yield
+
 app = FastAPI(lifespan=lifespan)
 
 

@@ -100,34 +100,6 @@ def reservation(id, orderId, amount, price):
               conn.close()
 
 
-def confirmation(orderId):
-    '''
-    Purpose: To update the database to show the order has been confirmed
-    Parameters: the order id
-    Returns: If successful returns a dict containing the order id and updated status, if failed then returns exception/error message
-    '''
-    conn = None
-    try:
-        with psycopg2.connect(connection_string) as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                                UPDATE reservation
-                                SET status = %s
-                                where order_id = %s;
-                            """, ("payment_successful", orderId))
-                cur.execute("COMMIT;")
-                return {"id": orderId, "status": "payment_successful"}
-            
-    except Exception as error:
-        print(f"An error occurred: {error}", flush=True)
-        print(traceback.format_exc(), flush=True)
-        return error
-
-    finally:
-         if conn:
-              conn.close()
-
-
 
 
 def releasing(orderId):
@@ -174,6 +146,39 @@ def releasing(orderId):
     finally:
          if conn:
               conn.close()
+
+def updateStatus(orderId, status):
+    '''
+    Purpose: Updates the status of a reservation for a given order.
+    Parameters: orderId, the order's id. status, the new status to set.
+    Returns: On success, dict with id and status. On failure, dict with error or the exception object.
+    '''
+    conn = None
+    try:
+        with psycopg2.connect(connection_string) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                                        UPDATE reservation
+                                        SET status = %s
+                                        WHERE order_id = %s;
+                                    """, [status, orderId])
+                        
+                        if cur.rowcount == 0:
+                            return {"error": f"No reservation found for order {orderId}"}
+                        
+                        cur.execute("COMMIT;")
+
+                        return {"id": orderId, "status": status}
+                    
+    except Exception as error:
+        print(f"An error occurred: {error}", flush=True)
+        print(traceback.format_exc(), flush=True)
+        return error
+    
+    finally:
+         if conn:
+              conn.close()
+
 
 def info(productId):
     """

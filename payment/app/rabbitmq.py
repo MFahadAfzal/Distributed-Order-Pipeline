@@ -1,24 +1,12 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 import pika
-import threading
 import json
 import os
 import traceback
+import random
 
 RMQSTRING = os.environ['RMQSTRING']
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    '''
-    Purpose: will call listener on a new thread to start wait for messages in the rabbitmq queue
-    Parameters: FastAPI instance
-    Returns: Nothing
-    '''
-    t = threading.Thread(target=listener, daemon=True)
-    t.start()
-    yield 
 
 def listener():
     '''
@@ -37,14 +25,46 @@ def listener():
                                 auto_ack=True,
                                 on_message_callback=callback)
 
-        print(' [*] Waiting for messages. To exit press CTRL+C')
+        print(' [*] Waiting for messages. To exit press CTRL+C', flush=True)
         channel.start_consuming()
 
     except Exception as e: print(f"Listener error: {e}", flush=True)
 
 def callback(ch, method, properties, body):
-    #callback function for when something is in payment queue
-    print(f" [x] Received {body}", flush=True)
+    '''
+    Purpose: Processes payment messages from the RabbitMQ 'payment' queue, simulates payment success/failure, and publishes the result to the 'processed' queue
+    Parameters: ch, method, properties, body. Provided automatically by pika when a message is received
+    Returns: Nothing
+    '''
+    success = random.random() < 0.9
+    data = json.loads(body.decode('utf-8'))
+
+    data["status"] = success
+    conn = None
+    
+    parameters = pika.URLParameters(RMQSTRING)
+    try:
+        conn = pika.BlockingConnection(parameters)
+        channel = conn.channel()
+
+        channel.queue_declare(queue='processed')
+
+        channel.basic_publish(
+            exchange='',
+            routing_key='processed',
+            body=json.dumps(data)
+        )
+        print(f" [x] Sent '{data}'", flush =True)
+
+
+    except Exception as error:
+        print(f"An error occurred: {error}", flush=True)
+        print(traceback.format_exc(), flush=True)
+        return error
+
+    finally:
+        if conn:
+            conn.close()
 
 
 

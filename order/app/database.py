@@ -17,36 +17,24 @@ class OrderData(BaseModel):
     orders: list[Item]
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+def setupSchema():
     '''
-    Purpose: if first time running will create the proper schema in the database
-    Parameters: FastAPI instance
+    Purpose: Creates the database schema on first run by executing schema.sql
+    Parameters: None
     Returns: Nothing
     '''
     conn = None
     try:
-        # The 'with' block ensures the connection is closed when finished
         with psycopg2.connect(connection_string) as conn:
-            
-            # Open a cursor to perform database operations
             with conn.cursor() as cur:
-                
                 with open("schema.sql", "r", encoding="utf-8") as f:
                     schema_sql = f.read()
-            
-                # Execute the SQL commands
                 cur.execute(schema_sql)
-
-
     except Exception as e:
         print(f"Database error occurred: {e}")
-
     finally:
         if conn:
             conn.close()
-    yield 
-
 
 async def reserve(data: OrderData):
     '''
@@ -120,6 +108,45 @@ async def reserve(data: OrderData):
         finally:
             if conn:
                 conn.close()
+
+async def updateOrderStatus(orderId, status):
+    '''
+    Purpose: Updates the order's status in the local database and calls Inventory's /status endpoint to update the corresponding reservation status.
+    Parameters: orderId, the order's id. status, the new status to set.
+    Returns: On success, dict with id and status. On failure, dict with error or the exception object.
+    '''
+    conn = None
+    try:
+        with psycopg2.connect(connection_string) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                                UPDATE orders
+                                SET status = %s
+                                WHERE id = %s;
+                            """, [status, orderId])
+
+                if cur.rowcount == 0:
+                    return {"error": f"No order found for {orderId}"}
+
+                cur.execute("COMMIT;")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{os.environ['INVURL']}status",
+                params={"orderId": orderId, "status": status}
+            )
+            response.raise_for_status()
+
+        return {"id": orderId, "status": status}
+
+    except Exception as error:
+        print(f"An error occurred: {error}", flush=True)
+        print(traceback.format_exc(), flush=True)
+        return error
+
+    finally:
+        if conn:
+            conn.close()
 
 
 def getOrderData(orderId):

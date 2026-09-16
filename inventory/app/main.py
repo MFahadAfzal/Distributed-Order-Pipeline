@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from database import lifespan, reservation, confirmation, releasing, info
+from database import lifespan, reservation, releasing, info, updateStatus
 
 app = FastAPI(lifespan=lifespan)
 
@@ -12,15 +12,14 @@ async def reserve(id: int, orderId: int, amount: int, price: int):
     reservation(id, orderId, amount, price)
     return
 
-@app.post("/confirm")
-async def confirm(orderId: int):
-    confirmation(orderId)
-    return
-
 @app.post("/release")
 async def release(orderId: int):
     releasing(orderId)
     return
+
+@app.post("/status")
+async def status(orderId: int, status: str):
+    return updateStatus(orderId, status)
 
 @app.get("/information")
 async def information(productId: int):

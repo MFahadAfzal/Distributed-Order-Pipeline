@@ -32,6 +32,11 @@ services:
     build: notification
     ports:
       - "${NOTIFICATION_PORT}:8000"
+    environment:
+      - RMQSTRING=${RABBITMQ}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     develop:
       watch:
         - action: sync

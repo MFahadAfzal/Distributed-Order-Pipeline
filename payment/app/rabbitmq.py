@@ -56,6 +56,15 @@ def callback(ch, method, properties, body):
         )
         print(f" [x] Sent '{data}'", flush =True)
 
+        channel.queue_declare(queue='notification')
+
+        channel.basic_publish(
+            exchange='',
+            routing_key='notification',
+            body=json.dumps(data)
+        )
+        print(f" [x] Sent '{data}'", flush =True)
+
 
     except Exception as error:
         print(f"An error occurred: {error}", flush=True)
